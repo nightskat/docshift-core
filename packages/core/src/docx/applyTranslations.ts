@@ -39,8 +39,6 @@ export async function applyTranslations(
       const trans = translated[segIdx] ?? '';
       segIdx++;
 
-      if (!trans) continue;
-
       if (fmt.kind === 'uniform') {
         let placed = false;
         for (const run of runs) {

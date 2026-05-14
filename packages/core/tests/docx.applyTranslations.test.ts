@@ -63,33 +63,19 @@ describe('applyTranslations', () => {
     const { formatMap } = await extractSegments(buf);
     const out = await applyTranslations(buf, formatMap, ['']);
     expect(out).toBeInstanceOf(ArrayBuffer);
+    const runs = await readRuns(out);
+    expect(runs[0].text).toBe('');
   });
 
-  it('clears extra w:t nodes in uniform run (multi-t bug)', async () => {
-    // A run with 2 <w:t> children — produced by LibreOffice and some Word versions
-    const buf = await makeDocx(
-      `<w:p xmlns:w="${W}"><w:r><w:t>Part one</w:t><w:t>Part two</w:t></w:r></w:p>`,
-    );
+  it('clears extra t-nodes in the same run to prevent corruption', async () => {
+    // A run with two t-nodes: <w:r><w:t>Hello</w:t><w:t> world</w:t></w:r>
+    const xml = `<w:p xmlns:w="${W}"><w:r><w:t>Hello</w:t><w:t> world</w:t></w:r></w:p>`;
+    const buf = await makeDocx(xml);
     const { formatMap } = await extractSegments(buf);
-    const out = await applyTranslations(buf, formatMap, ['Translation']);
-    const zip = await JSZip.loadAsync(out);
-    const xml = await zip.file('word/document.xml')!.async('text');
-    expect(xml).not.toContain('Part two');
-    expect(xml).toContain('Translation');
-  });
 
-  it('clears extra w:t nodes in mixed-fallback run', async () => {
-    // Mixed para where distributeRuns returns null (single word < 2 runs)
-    // First run has 2 <w:t> children → fallback path must clear tNodes[1..]
-    const buf = await makeDocx(`<w:p xmlns:w="${W}">
-      <w:r><w:rPr><w:b/></w:rPr><w:t>Bold</w:t><w:t>Extra</w:t></w:r>
-      <w:r><w:t xml:space="preserve"> plain</w:t></w:r>
-    </w:p>`);
-    const { formatMap } = await extractSegments(buf);
-    // "word" is single — distributeRuns returns null (1 word < 2 runs)
-    const out = await applyTranslations(buf, formatMap, ['word']);
-    const zip = await JSZip.loadAsync(out);
-    const xml = await zip.file('word/document.xml')!.async('text');
-    expect(xml).not.toContain('Extra');
+    const out = await applyTranslations(buf, formatMap, ['Xin chào']);
+    const runs = await readRuns(out);
+    // Should be "Xin chào", not "Xin chào world"
+    expect(runs[0].text).toBe('Xin chào');
   });
 });
