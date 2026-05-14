@@ -47,6 +47,7 @@ export async function applyTranslations(
           const tNodes = run.element.getElementsByTagNameNS(W, 't');
           if (!placed && run.text) {
             if (tNodes[0]) tNodes[0].textContent = trans;
+            for (let i = 1; i < tNodes.length; i++) tNodes[i].textContent = '';
             placed = true;
           } else {
             for (let i = 0; i < tNodes.length; i++) tNodes[i].textContent = '';
@@ -75,6 +76,7 @@ export async function applyTranslations(
             const tNodes = run.element.getElementsByTagNameNS(W, 't');
             if (!placed && run.text) {
               if (tNodes[0]) tNodes[0].textContent = trans;
+              for (let i = 1; i < tNodes.length; i++) tNodes[i].textContent = '';
               placed = true;
             } else {
               for (let i = 0; i < tNodes.length; i++) tNodes[i].textContent = '';
