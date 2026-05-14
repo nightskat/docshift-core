@@ -82,7 +82,7 @@ input .docx
   ├─ S3 reviewPrompt()  →  provider.complete()  →  finalTranslations[]
   │     (independent — rules only, NO glossary brief, avoids S1 "poison")
   │
-  └─ applyTranslations(formatMap, finalTranslations)  →  output .docx
+  └─ applyTranslations(buffer, formatMap, finalTranslations)  →  output .docx
         Fallback: if throws → return original buffer unchanged
 ```
 
@@ -114,6 +114,26 @@ Mixed paragraph = proportional word distribution via `distributeRuns()`.
 
 ---
 
+## Actual function signatures (authoritative — read before implementing callers)
+
+```typescript
+// extractSegments: buffer first
+extractSegments(buffer: ArrayBuffer): Promise<ExtractResult>
+
+// applyTranslations: buffer FIRST, then formatMap, then translated
+// (not formatMap-first — this was changed from the original spec)
+applyTranslations(
+  buffer: ArrayBuffer,
+  formatMap: FormatMap[],
+  translated: string[],
+): Promise<ArrayBuffer>
+
+// assertCountMatch: takes arrays, not numbers
+assertCountMatch(formatMap: unknown[], translated: unknown[]): void
+```
+
+---
+
 ## CoreProvider interface
 
 ```typescript
@@ -122,9 +142,9 @@ interface CoreProvider {
   translateWithBrief(
     segments: string[],
     targetLang: string,
-    readingNotes: string,
+    readingNotes: string,         // 3rd param = S1 output string, NOT {glossary,rules}
     onProgress?: (done: number, total: number) => void,
-    opts?: { glossary?: string; rules?: string },
+    opts?: { glossary?: string; rules?: string },  // 5th param = opts
   ): Promise<string[]>;
 }
 ```
@@ -164,6 +184,29 @@ Regex: `/^word\/(document|header\d*|footer\d*|footnotes|endnotes).*\.xml$/`
 
 ---
 
+## XML edge cases — MUST test these
+
+These are real bugs found in production DOCX files. Always write tests covering them:
+
+**Multi-`<w:t>` per `<w:r>`**: Some exporters (LibreOffice, mail-merge templates) produce runs
+with more than one `<w:t>` child. When writing translated text to a run, you MUST clear all
+`tNodes[1..length-1]` after setting `tNodes[0]`. Failing to do so causes concatenated garbage text.
+
+```typescript
+// CORRECT
+if (tNodes[0]) tNodes[0].textContent = trans;
+for (let i = 1; i < tNodes.length; i++) tNodes[i].textContent = '';
+
+// WRONG — leaves tNodes[1..] with original content
+if (tNodes[0]) tNodes[0].textContent = trans;
+```
+
+**`distributeRuns` rounding**: Proportional word allocation can exhaust words before the last
+non-empty run when run sizes are skewed (e.g. `[50, 50, 1]` with 4 words → last run empty).
+Ensure the last non-empty run always receives remaining words.
+
+---
+
 ## What Jules should NOT do
 
 - Do not add Tauri, React, Next.js, or any UI framework
@@ -183,4 +226,6 @@ Regex: `/^word\/(document|header\d*|footer\d*|footnotes|endnotes).*\.xml$/`
 
 **Monorepo layout:** Source lives in `packages/core/` not repo root. Maintain this structure for all future issues.
 
-**PR review process:** After Jules opens a PR, Codex runs an adversarial review. Jules should read PR comments carefully — they contain findings from the review that may require fixes before merge.
+**applyTranslations arg order:** The implemented signature is `(buffer, formatMap, translated)` — buffer is first. Some early specs showed formatMap-first. Trust the source code, not the spec text.
+
+**PR review process:** After Jules opens a PR, Codex runs an adversarial review. Jules should read PR comments carefully — they contain findings from the review that may require fixes before merge. Common findings include multi-`<w:t>` handling and interface signature mismatches.
