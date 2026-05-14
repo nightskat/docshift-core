@@ -173,3 +173,14 @@ Regex: `/^word\/(document|header\d*|footer\d*|footnotes|endnotes).*\.xml$/`
 - Do not change `src/index.ts` exports without updating all downstream types
 - Do not bump major versions of dependencies (patch/minor only)
 - Do not commit `.env` files or any secrets
+- Do not commit `node_modules/`, `dist/`, or any build artifacts — they are in `.gitignore`
+
+---
+
+## Lessons learned (updated 2026-05-14)
+
+**node_modules in git patch (fixed):** First scaffold attempt failed because `.gitignore` was missing. Jules ran `npm install` then included all of `node_modules/` in the changeset (~530MB). Always check `.gitignore` exists before `npm install`. The fix has been applied — `.gitignore` is now in the repo root.
+
+**Monorepo layout:** Source lives in `packages/core/` not repo root. Maintain this structure for all future issues.
+
+**PR review process:** After Jules opens a PR, Codex runs an adversarial review. Jules should read PR comments carefully — they contain findings from the review that may require fixes before merge.
