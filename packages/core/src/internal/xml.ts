@@ -3,7 +3,13 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 export const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
 export function parseXml(xml: string): Document {
-  return new DOMParser().parseFromString(xml, 'text/xml');
+  return new DOMParser({
+    errorHandler: (level, msg) => {
+      if (level === 'error' || level === 'fatalError') {
+        throw new Error(`XML parsing error: ${msg}`);
+      }
+    }
+  }).parseFromString(xml, 'text/xml');
 }
 
 export function serializeXml(doc: Document): string {
