@@ -16,39 +16,45 @@ npm install @docshift/core
 
 ```typescript
 import { translateDocxBuffer } from '@docshift/core';
-
-const result = await translateDocxBuffer(buffer, provider, 'en', {
-  glossary: 'tín dụng = credit facility',
-  rules: 'Keep all numbers. Preserve paragraph structure.',
-});
-// result.buffer — translated .docx ArrayBuffer
-// result.filename — suggested output filename
-```
-
-## Architecture
-
-Three-stage pipeline with format preservation:
-
-1. **S1 Primer** — LLM reads a sample, builds domain context (brief)
-2. **S2 Translate** — segment-by-segment translation with brief + optional glossary/rules
-3. **S3 Audit** — independent review pass (rules only, no glossary — keeps it unbiased)
-
-Formatting (bold, italic, headers, tables) is extracted into a `FormatMap` side-channel before translation and reapplied after. The LLM never sees markup.
-
-## BYOK (Bring Your Own Key)
-
-Implement the `CoreProvider` interface with any LLM:
-
-```typescript
 import type { CoreProvider } from '@docshift/core';
 
 const provider: CoreProvider = {
-  async complete(prompt) { /* call your LLM */ },
-  async translateWithBrief(segments, targetLang, brief, onProgress, opts) {
-    /* translate each segment */
+  async complete(prompt) { /* call your LLM, return response string */ },
+  async translateWithBrief(segments, targetLang, readingNotes, onProgress, opts) {
+    /* translate segments in chunks, inject opts.glossary + opts.rules */
+    return segments.map(() => '');
   },
 };
+
+const fs = await import('fs/promises');
+const input = (await fs.readFile('document.docx')).buffer;
+
+const { buffer } = await translateDocxBuffer(input, provider, 'English', {
+  glossary: 'tổng hợp=combined, hợp nhất=consolidated',
+  rules: 'Keep all numbers in original format.',
+  onStage: stage => console.log('Stage:', stage),
+  onProgress: (done, total) => console.log(`${done}/${total} segments`),
+});
+
+await fs.writeFile('document_en.docx', Buffer.from(buffer));
 ```
+
+## API
+
+### `translateDocxBuffer(input, provider, targetLang, options?)`
+
+| Param | Type | Description |
+|---|---|---|
+| `input` | `ArrayBuffer` | Source `.docx` file bytes |
+| `provider` | `CoreProvider` | LLM adapter — must implement `complete` + `translateWithBrief` |
+| `targetLang` | `string` | Target language name, e.g. `"English"` |
+| `options.glossary` | `string?` | Comma-separated `source=target` pairs |
+| `options.rules` | `string?` | Free-text translation rules |
+| `options.onStage` | `(stage: string) => void?` | Stage callback: extracting → priming → translating → reviewing → rebuilding → done |
+| `options.onProgress` | `(done, total) => void?` | Per-segment progress |
+
+Returns `Promise<{ buffer: ArrayBuffer; filename: string }>`.
+On rebuild failure, returns original `buffer` unchanged (never throws).
 
 ## Support
 
