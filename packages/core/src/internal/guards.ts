@@ -1,4 +1,7 @@
-// assertCountMatch (throws on length mismatch)
-export function assertCountMatch(expected: number, actual: number) {
-  throw new Error('not implemented');
+export function assertCountMatch(formatMap: unknown[], translated: unknown[]): void {
+  if (translated.length !== formatMap.length) {
+    throw new Error(
+      `Translation count mismatch: expected ${formatMap.length}, got ${translated.length}`
+    );
+  }
 }

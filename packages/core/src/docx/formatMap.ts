@@ -1,11 +1,12 @@
 export interface FormatMap {
   kind: 'uniform' | 'mixed';
-  fingerprint: string;          // `${text.length}:${text.slice(0,32)}`
+  fingerprint: string;   // "${text.length}:${text.slice(0,32)}" — alignment guard
   paragraphStyle?: string;
-  runs?: { chars: number; rPrXml: string }[];  // mixed only
+  /** Present only for mixed paragraphs. One entry per non-empty run. */
+  runs?: { chars: number; rPrXml: string }[];
 }
 
 export interface ExtractResult {
-  segments: string[];
+  segments: string[];   // plain text — no format markers
   formatMap: FormatMap[];
 }
