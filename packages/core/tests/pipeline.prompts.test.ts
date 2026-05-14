@@ -35,3 +35,17 @@ describe('reviewPrompt', () => {
     expect(prompt).toContain('[1] Xin chào');
   });
 });
+
+import { parseNumberedLines } from '../src/pipeline/parseNumberedLines';
+
+describe('parseNumberedLines', () => {
+  it('returns lines in numeric order even if LLM reorders them', () => {
+    const raw = '[2] Second\n[1] First\n[3] Third';
+    expect(parseNumberedLines(raw, ['a', 'b', 'c'])).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('falls back when count mismatches', () => {
+    const fallback = ['a', 'b'];
+    expect(parseNumberedLines('[1] only one', fallback)).toEqual(fallback);
+  });
+});
