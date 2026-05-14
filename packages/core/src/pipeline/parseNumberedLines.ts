@@ -1,3 +1,5 @@
-export function parseNumberedLines(text: string): string[] {
-  throw new Error('not implemented');
+export function parseNumberedLines(raw: string, fallback: string[]): string[] {
+  const lines = raw.split('\n').filter(l => /^\[\d+\]/.test(l));
+  if (lines.length !== fallback.length) return fallback;
+  return lines.map(l => l.replace(/^\[\d+\]\s*/, ''));
 }

@@ -1,7 +1,37 @@
 import { describe, it, expect } from 'vitest';
+import { primerPrompt, reviewPrompt } from '../src/pipeline/prompts';
 
-describe('pipeline.prompts', () => {
-  it('is a stub', () => {
-    expect(true).toBe(true);
+describe('primerPrompt', () => {
+  it('includes glossary block when glossary provided', () => {
+    const prompt = primerPrompt('Some text', 'tổng hợp=combined, hợp nhất=consolidated');
+    expect(prompt).toContain('MANDATORY GLOSSARY');
+    expect(prompt).toContain('"tổng hợp" → "combined"');
+  });
+
+  it('omits glossary block when glossary is empty string', () => {
+    expect(primerPrompt('Some text', '')).not.toContain('MANDATORY GLOSSARY');
+  });
+
+  it('omits glossary block when glossary is undefined', () => {
+    expect(primerPrompt('Some text')).not.toContain('MANDATORY GLOSSARY');
+  });
+});
+
+describe('reviewPrompt', () => {
+  it('includes rules block when rules provided', () => {
+    const prompt = reviewPrompt(['src'], ['trans'], 'English', 'Keep numbers exact.');
+    expect(prompt).toContain('MANDATORY RULES');
+    expect(prompt).toContain('Keep numbers exact.');
+  });
+
+  it('does NOT include glossary (S3 must stay independent of S1)', () => {
+    expect(reviewPrompt(['src'], ['trans'], 'English')).not.toContain('MANDATORY GLOSSARY');
+  });
+
+  it('numbers source and translation lines correctly', () => {
+    const prompt = reviewPrompt(['Hello', 'World'], ['Xin chào', 'Thế giới'], 'Vietnamese');
+    expect(prompt).toContain('[1] Hello');
+    expect(prompt).toContain('[2] World');
+    expect(prompt).toContain('[1] Xin chào');
   });
 });
