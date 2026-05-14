@@ -1,4 +1,3 @@
-// Stub — filled in by subsequent issues
 export type { FormatMap, ExtractResult } from './docx/formatMap';
 export { extractSegments } from './docx/extractSegments';
 export { applyTranslations } from './docx/applyTranslations';
