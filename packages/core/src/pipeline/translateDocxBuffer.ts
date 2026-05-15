@@ -38,7 +38,9 @@ export async function translateDocxBuffer(
   try {
     buffer = await applyTranslations(input, formatMap, finalTranslations);
   } catch (err) {
-    console.error('applyTranslations failed, returning original:', err);
+    // 🛡️ Sentinel: Do not log the raw error object to prevent leaking sensitive document text (PII)
+    // or stack traces into server logs. The error contains document text fingerprints.
+    console.error('applyTranslations failed securely, returning original buffer.');
     buffer = input;
   }
 
