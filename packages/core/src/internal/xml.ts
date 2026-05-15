@@ -6,8 +6,12 @@ export function parseXml(xml: string): Document {
   return new DOMParser().parseFromString(xml, 'text/xml');
 }
 
+// Reuse a single XMLSerializer instance to avoid unnecessary object creation
+// during serialization of many small nodes (e.g., thousands of runs per document).
+const sharedSerializer = new XMLSerializer();
+
 export function serializeXml(doc: Document): string {
-  return new XMLSerializer().serializeToString(doc as any);
+  return sharedSerializer.serializeToString(doc as any);
 }
 
 export interface RunInfo {
@@ -18,7 +22,7 @@ export interface RunInfo {
 
 export function serializeRPr(run: Element): string {
   const rPr = run.getElementsByTagNameNS(W, 'rPr')[0] as Element | undefined;
-  return rPr ? new XMLSerializer().serializeToString(rPr as any) : '';
+  return rPr ? sharedSerializer.serializeToString(rPr as any) : '';
 }
 
 export function getRuns(para: Element): RunInfo[] {
