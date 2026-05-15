@@ -1,4 +1,4 @@
-## 2024-05-14 - Strict XML Parsing for xmldom
+## 2026-05-14 - Strict XML Parsing for xmldom
 **Vulnerability:** The `@xmldom/xmldom` library parses malformed or malicious XML inputs (such as unclosed attributes or mismatched tags) without throwing an error by default, leading to silent failure or processing of corrupted DOM state.
 **Learning:** By default, `@xmldom/xmldom` has an empty or logging-only `errorHandler`. When processing external DOCX files, a malformed `document.xml` could bypass expected structural checks and lead to undefined behavior or state corruption because parsing errors don't stop execution.
 **Prevention:** Always configure `DOMParser` from `@xmldom/xmldom` with an explicit `errorHandler` that throws exceptions on `error` and `fatalError` severity levels to ensure the pipeline fails securely when encountering invalid XML.
