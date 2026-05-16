@@ -39,7 +39,18 @@ export function getRuns(para: Element): RunInfo[] {
     const tNodes = r.getElementsByTagNameNS(W, 't');
     let text = '';
     for (let j = 0; j < tNodes.length; j++) text += tNodes[j].textContent ?? '';
-    out.push({ element: r, text, rPrXml: serializeRPr(r) });
+
+    // Performance: Lazily evaluate rPrXml to avoid unnecessary XMLSerializer
+    // calls for runs where formatting is never checked (e.g. empty runs).
+    let rPrXmlCached: string | undefined;
+    out.push({
+      element: r,
+      text,
+      get rPrXml() {
+        if (rPrXmlCached === undefined) rPrXmlCached = serializeRPr(r);
+        return rPrXmlCached;
+      }
+    });
   }
   return out;
 }
