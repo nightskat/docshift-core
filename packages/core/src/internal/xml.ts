@@ -56,9 +56,19 @@ export function getRuns(para: Element): RunInfo[] {
 }
 
 export function isUniform(runs: RunInfo[]): boolean {
-  const nonEmpty = runs.filter(r => r.text.length > 0);
-  if (nonEmpty.length <= 1) return true;
-  return nonEmpty.every(r => r.rPrXml === nonEmpty[0].rPrXml);
+  // Performance: Single-pass iteration to prevent intermediate array allocations
+  // (from .filter) and avoid multiple traversals for this hot path.
+  let firstXml: string | null = null;
+  for (let i = 0; i < runs.length; i++) {
+    if (runs[i]!.text.length > 0) {
+      if (firstXml === null) {
+        firstXml = runs[i]!.rPrXml;
+      } else if (runs[i]!.rPrXml !== firstXml) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export function fingerprint(text: string): string {
