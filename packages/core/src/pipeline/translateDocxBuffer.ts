@@ -40,7 +40,7 @@ export async function translateDocxBuffer(
   } catch (err) {
     // 🛡️ Sentinel: Do not log the raw error object to prevent leaking sensitive document text (PII)
     // or stack traces into server logs. The error contains document text fingerprints.
-    console.error('applyTranslations failed securely, returning original buffer.');
+    console.error('applyTranslations failed securely, returning original buffer.', err instanceof Error ? err.message : '');
     buffer = input;
   }
 
