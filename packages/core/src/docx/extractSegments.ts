@@ -28,10 +28,19 @@ export async function extractSegments(buffer: ArrayBuffer): Promise<ExtractResul
         formatMap.push({ kind: 'uniform', fingerprint: fp });
       } else {
         segments.push(fullText);
+
+        const mixedRuns = [];
+        for (let i = 0; i < runs.length; i++) {
+          const r = runs[i];
+          if (r.text.length > 0) {
+            mixedRuns.push({ chars: r.text.length, rPrXml: r.rPrXml });
+          }
+        }
+
         formatMap.push({
           kind: 'mixed',
           fingerprint: fp,
-          runs: runs.filter(r => r.text.length > 0).map(r => ({ chars: r.text.length, rPrXml: r.rPrXml })),
+          runs: mixedRuns,
         });
       }
     }
