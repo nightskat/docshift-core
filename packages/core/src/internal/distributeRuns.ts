@@ -1,9 +1,15 @@
 /** Distribute translated text across runs proportionally by original char count.
  *  Splits at word boundaries. Returns null when fewer words than non-empty runs. */
 export function distributeRuns(translated: string, runLengths: number[]): string[] | null {
-  const total = runLengths.reduce((a, b) => a + b, 0);
+  let total = 0;
+  let nonEmptyCount = 0;
+  for (let i = 0; i < runLengths.length; i++) {
+    const l = runLengths[i];
+    total += l;
+    if (l > 0) nonEmptyCount++;
+  }
+
   if (total === 0) return null;
-  const nonEmptyCount = runLengths.filter(l => l > 0).length;
   if (nonEmptyCount <= 1) return null;
   const words = translated.split(/\s+/);
   if (words.length < nonEmptyCount) return null;

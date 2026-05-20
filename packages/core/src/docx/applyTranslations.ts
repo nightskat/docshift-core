@@ -54,8 +54,13 @@ export async function applyTranslations(
           }
         }
       } else {
-        const nonEmptyRuns = runs.filter(r => r.text.length > 0);
-        const lengths = nonEmptyRuns.map(r => r.text.length);
+        const lengths = [];
+        for (let i = 0; i < runs.length; i++) {
+          if (runs[i].text.length > 0) {
+            lengths.push(runs[i].text.length);
+          }
+        }
+
         const distributed = distributeRuns(trans, lengths);
 
         if (distributed) {
