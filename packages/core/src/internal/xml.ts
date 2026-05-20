@@ -6,7 +6,10 @@ export function parseXml(xml: string): Document {
   return new DOMParser({
     errorHandler: (level, msg) => {
       if (level === 'error' || level === 'fatalError') {
-        throw new Error(`XML parsing error: ${msg}`);
+        // 🛡️ Sentinel: Do not include `msg` in the error thrown.
+        // `@xmldom/xmldom` error messages can include snippets of the malformed XML,
+        // which might contain sensitive PII from the document text.
+        throw new Error('XML parsing error');
       }
     }
   }).parseFromString(xml, 'text/xml');
