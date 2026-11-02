@@ -67,7 +67,13 @@ export async function translateDocxBuffer(
   assertTranslationCount('Review', finalTranslations, segments.length);
 
   options?.onStage?.('apply');
-  const translatedBuffer = await applyTranslations(buffer, formatMap, finalTranslations);
+  // Invariant 5 (AGENTS.md): never throw on rebuild failure — fall back to the original buffer.
+  let translatedBuffer: ArrayBuffer;
+  try {
+    translatedBuffer = await applyTranslations(buffer, formatMap, finalTranslations);
+  } catch {
+    translatedBuffer = buffer;
+  }
 
   return {
     buffer: translatedBuffer,
