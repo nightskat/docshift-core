@@ -5,6 +5,23 @@ import { parseNumberedLines } from './parseNumberedLines';
 import type { CoreProvider, TranslateOptions, TranslateResultBuffer } from './types';
 
 const PRIMER_SAMPLE_CHARS = 1000;
+const MAX_TARGET_LANG_LENGTH = 64;
+
+/**
+ * Reject targetLang values that could inject instructions into the S3 prompt
+ * (newlines/control chars) or are empty/oversized. Language names such as
+ * "Vietnamese" or "English (US)" remain valid.
+ */
+function validateTargetLang(targetLang: string): void {
+  if (
+    typeof targetLang !== 'string' ||
+    targetLang.trim() === '' ||
+    targetLang.length > MAX_TARGET_LANG_LENGTH ||
+    /[\u0000-\u001f\u007f\u2028\u2029]/.test(targetLang)
+  ) {
+    throw new Error('Invalid targetLang: expected a short single-line language name or code.');
+  }
+}
 
 export async function translateDocxBuffer(
   input: ArrayBuffer,
@@ -12,6 +29,7 @@ export async function translateDocxBuffer(
   targetLang: string,
   options?: TranslateOptions,
 ): Promise<TranslateResultBuffer> {
+  validateTargetLang(targetLang);
   const { onStage, onProgress, glossary, rules } = options ?? {};
 
   onStage?.('extracting');
