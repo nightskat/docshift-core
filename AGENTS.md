@@ -66,7 +66,7 @@ tests/
 
 ---
 
-## Architecture — 3-stage pipeline
+## Architecture — 2-stage pipeline
 
 ```
 input .docx
@@ -74,13 +74,11 @@ input .docx
   ├─ extractSegments()  →  { segments: string[], formatMap: FormatMap[] }
   │                         FormatMap held aside — LLM never sees it
   │
-  ├─ S1 primerPrompt()  →  provider.complete()  →  readingNotes
+  ├─ Primer Stage: primerPrompt()  →  provider.complete()  →  primerTranslations[]
+  │     (Translates all segments in a single pass, with glossary)
   │
-  ├─ S2 translateWithBrief()  →  rawTranslations[]
-  │     (chunks of 15-20 segments, glossary+rules injected per chunk)
-  │
-  ├─ S3 reviewPrompt()  →  provider.complete()  →  finalTranslations[]
-  │     (independent — rules only, NO glossary brief, avoids S1 "poison")
+  ├─ Review Stage: reviewPrompt()  →  provider.complete()  →  finalTranslations[]
+  │     (Refines the primer translations, with glossary and rules)
   │
   └─ applyTranslations(formatMap, finalTranslations)  →  output .docx
         Fallback: if throws → return original buffer unchanged
@@ -93,7 +91,7 @@ input .docx
 1. `formatMap.length === segments.length` always — enforced by `extractSegments`
 2. `translated.length === formatMap.length` — `assertCountMatch` throws if violated
 3. `fingerprint(fullText) === fmt.fingerprint` — throws `"misalignment"` if docx mutated between extract and apply
-4. S3 `reviewPrompt` must NOT include glossary — only `rules` — to stay independent of S1
+4. Both Primer and Review stages receive the glossary to ensure consistency.
 5. `translateDocxBuffer` must never throw on rebuild failure — catch → return original buffer
 
 ---
@@ -119,13 +117,6 @@ Mixed paragraph = proportional word distribution via `distributeRuns()`.
 ```typescript
 interface CoreProvider {
   complete(prompt: string): Promise<string>;
-  translateWithBrief(
-    segments: string[],
-    targetLang: string,
-    readingNotes: string,
-    onProgress?: (done: number, total: number) => void,
-    opts?: { glossary?: string; rules?: string },
-  ): Promise<string[]>;
 }
 ```
 
@@ -149,8 +140,8 @@ Regex: `/^word\/(document|header\d*|footer\d*|footnotes|endnotes).*\.xml$/`
 
 ## Glossary + Rules injection
 
-- **Glossary**: comma-separated `source=target` pairs. Injected into S1 primer and S2 per-chunk prompt.
-- **Rules**: free-text. Injected into S2 per-chunk and S3 review. NOT into S1 primer.
+- **Glossary**: comma-separated `source=target` pairs. Injected into both the Primer and Review prompts.
+- **Rules**: free-text. Injected into the Review prompt only.
 - Both are optional. Empty string → no injection (no empty blocks in prompt).
 
 ---
