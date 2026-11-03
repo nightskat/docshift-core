@@ -5,22 +5,53 @@ import { parseNumberedLines } from './parseNumberedLines';
 import type { CoreProvider, TranslateOptions, TranslateResultBuffer } from './types';
 
 const PRIMER_SAMPLE_CHARS = 1000;
-const MAX_TARGET_LANG_LENGTH = 64;
 
 /**
- * Reject targetLang values that could inject instructions into the S3 prompt
- * (newlines/control chars) or are empty/oversized. Language names such as
- * "Vietnamese" or "English (US)" remain valid.
+ * Fixed allowlist of target languages: BCP-47 code → canonical English name.
+ * Only the canonical name is ever interpolated into prompts, so caller input
+ * never reaches the LLM verbatim (prompt-injection guard).
  */
-function validateTargetLang(targetLang: string): void {
-  if (
-    typeof targetLang !== 'string' ||
-    targetLang.trim() === '' ||
-    targetLang.length > MAX_TARGET_LANG_LENGTH ||
-    /[\u0000-\u001f\u007f\u2028\u2029]/.test(targetLang)
-  ) {
-    throw new Error('Invalid targetLang: expected a short single-line language name or code.');
+const LANGUAGES: Readonly<Record<string, string>> = {
+  vi: 'Vietnamese',
+  en: 'English',
+  'en-US': 'English (US)',
+  'en-GB': 'English (UK)',
+  zh: 'Chinese',
+  'zh-CN': 'Chinese (Simplified)',
+  'zh-TW': 'Chinese (Traditional)',
+  ja: 'Japanese',
+  ko: 'Korean',
+  fr: 'French',
+  de: 'German',
+  es: 'Spanish',
+  it: 'Italian',
+  pt: 'Portuguese',
+  ru: 'Russian',
+  th: 'Thai',
+  id: 'Indonesian',
+  ms: 'Malay',
+  km: 'Khmer',
+  lo: 'Lao',
+};
+
+const BY_CODE = new Map(Object.entries(LANGUAGES).map(([c, n]) => [c.toLowerCase(), { code: c, name: n }]));
+// Bare names are accepted only for primary (region-less) languages, e.g. "Vietnamese".
+const BY_NAME = new Map(
+  Object.entries(LANGUAGES)
+    .filter(([c]) => !c.includes('-'))
+    .map(([c, n]) => [n.toLowerCase(), { code: c, name: n }]),
+);
+
+/** Resolve targetLang against the allowlist; throw on anything else. */
+export function resolveTargetLang(targetLang: unknown): { code: string; name: string } {
+  const key = typeof targetLang === 'string' ? targetLang.trim().toLowerCase() : '';
+  const hit = BY_CODE.get(key) ?? BY_NAME.get(key);
+  if (!hit) {
+    throw new Error(
+      `Invalid targetLang: expected one of ${Object.keys(LANGUAGES).join(', ')} (or its English name).`,
+    );
   }
+  return hit;
 }
 
 export async function translateDocxBuffer(
@@ -29,7 +60,7 @@ export async function translateDocxBuffer(
   targetLang: string,
   options?: TranslateOptions,
 ): Promise<TranslateResultBuffer> {
-  validateTargetLang(targetLang);
+  const lang = resolveTargetLang(targetLang);
   const { onStage, onProgress, glossary, rules } = options ?? {};
 
   onStage?.('extracting');
@@ -41,18 +72,19 @@ export async function translateDocxBuffer(
 
   onStage?.('translating');
   const rawTranslations = await provider.translateWithBrief(
-    segments, targetLang, readingNotes, onProgress,
+    segments, lang.name, readingNotes, onProgress,
     { glossary, rules },
   );
 
   onStage?.('reviewing');
   const reviewedRaw = await provider.complete(
-    reviewPrompt(segments, rawTranslations, targetLang, rules),
+    reviewPrompt(segments, rawTranslations, lang.name, rules),
   );
   const finalTranslations = parseNumberedLines(reviewedRaw, rawTranslations);
 
   onStage?.('rebuilding');
   let buffer: ArrayBuffer;
+  let fallback = false;
   try {
     buffer = await applyTranslations(input, formatMap, finalTranslations);
   } catch (err) {
@@ -60,8 +92,12 @@ export async function translateDocxBuffer(
     // or stack traces into server logs. The error contains document text fingerprints.
     console.error('applyTranslations failed securely, returning original buffer.', err instanceof Error ? err.message : '');
     buffer = input;
+    fallback = true;
   }
 
   onStage?.('done');
-  return { buffer, filename: '' };
+  // On fallback the buffer is the untranslated original: say so, and never label it "translated".
+  return fallback
+    ? { buffer, filename: 'original.docx', fallback: true }
+    : { buffer, filename: `translated-${lang.code}.docx`, fallback: false };
 }
