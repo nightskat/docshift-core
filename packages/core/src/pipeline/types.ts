@@ -22,4 +22,6 @@ export interface TranslateOptions extends TranslateBriefOpts {
 export interface TranslateResultBuffer {
   buffer: ArrayBuffer;
   filename: string;
+  /** true when rebuild failed and `buffer` is the untranslated original. */
+  fallback: boolean;
 }

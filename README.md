@@ -47,13 +47,13 @@ await fs.writeFile('document_en.docx', Buffer.from(buffer));
 |---|---|---|
 | `input` | `ArrayBuffer` | Source `.docx` file bytes |
 | `provider` | `CoreProvider` | LLM adapter — must implement `complete` + `translateWithBrief` |
-| `targetLang` | `string` | Target language name, e.g. `"English"` |
+| `targetLang` | `string` | Allowlisted code (`"vi"`, `"en"`, `"en-US"`, …) or its exact English name (`"Vietnamese"`, `"English (US)"`). Anything else throws `Invalid targetLang`. |
 | `options.glossary` | `string?` | Comma-separated `source=target` pairs |
 | `options.rules` | `string?` | Free-text translation rules |
 | `options.onStage` | `(stage: string) => void?` | Stage callback: extracting → priming → translating → reviewing → rebuilding → done |
 | `options.onProgress` | `(done, total) => void?` | Per-segment progress |
 
-Returns `Promise<{ buffer: ArrayBuffer; filename: string }>`.
+Returns `Promise<{ buffer: ArrayBuffer; filename: string; fallback: boolean }>`. On rebuild failure `fallback` is `true`, `buffer` is the original and `filename` is `original.docx`.
 On rebuild failure, returns original `buffer` unchanged (never throws).
 
 ## Support
