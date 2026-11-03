@@ -35,12 +35,9 @@ const LANGUAGES: Readonly<Record<string, string>> = {
 };
 
 const BY_CODE = new Map(Object.entries(LANGUAGES).map(([c, n]) => [c.toLowerCase(), { code: c, name: n }]));
-// Bare names are accepted only for primary (region-less) languages, e.g. "Vietnamese".
-const BY_NAME = new Map(
-  Object.entries(LANGUAGES)
-    .filter(([c]) => !c.includes('-'))
-    .map(([c, n]) => [n.toLowerCase(), { code: c, name: n }]),
-);
+// Exact canonical names (incl. regional, e.g. "English (US)") stay accepted for
+// backward compatibility; they are fixed strings, so no free text reaches prompts.
+const BY_NAME = new Map(Object.entries(LANGUAGES).map(([c, n]) => [n.toLowerCase(), { code: c, name: n }]));
 
 /** Resolve targetLang against the allowlist; throw on anything else. */
 export function resolveTargetLang(targetLang: unknown): { code: string; name: string } {
@@ -48,7 +45,7 @@ export function resolveTargetLang(targetLang: unknown): { code: string; name: st
   const hit = BY_CODE.get(key) ?? BY_NAME.get(key);
   if (!hit) {
     throw new Error(
-      `Invalid targetLang: expected one of ${Object.keys(LANGUAGES).join(', ')} (or its English name).`,
+      `Invalid targetLang: expected one of ${Object.keys(LANGUAGES).join(', ')} (or its exact English name, e.g. "English (US)").`,
     );
   }
   return hit;

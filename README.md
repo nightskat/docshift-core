@@ -47,7 +47,7 @@ await fs.writeFile('document_en.docx', Buffer.from(buffer));
 |---|---|---|
 | `input` | `ArrayBuffer` | Source `.docx` file bytes |
 | `provider` | `CoreProvider` | LLM adapter — must implement `complete` + `translateWithBrief` |
-| `targetLang` | `string` | Allowlisted code (`"vi"`, `"en"`, `"en-US"`, …) or primary English name (`"Vietnamese"`). Anything else throws `Invalid targetLang`. |
+| `targetLang` | `string` | Allowlisted code (`"vi"`, `"en"`, `"en-US"`, …) or its exact English name (`"Vietnamese"`, `"English (US)"`). Anything else throws `Invalid targetLang`. |
 | `options.glossary` | `string?` | Comma-separated `source=target` pairs |
 | `options.rules` | `string?` | Free-text translation rules |
 | `options.onStage` | `(stage: string) => void?` | Stage callback: extracting → priming → translating → reviewing → rebuilding → done |
